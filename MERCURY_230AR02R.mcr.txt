@@ -1,0 +1,374 @@
+// ag Mercury 230 proto emulation 
+
+unsigned short Tag_230AR02R_P0 = 1500
+unsigned short Tag_230AR02R_P1 = 1502
+unsigned short Tag_230AR02R_P2 = 1504
+unsigned short Tag_230AR02R_P3 = 1506
+unsigned short Tag_230AR02R_Q0 = 1510
+unsigned short Tag_230AR02R_Q1 = 1512
+unsigned short Tag_230AR02R_Q2 = 1514
+unsigned short Tag_230AR02R_Q3 = 1516
+unsigned short Tag_230AR02R_S0 = 1520
+unsigned short Tag_230AR02R_S1 = 1522
+unsigned short Tag_230AR02R_S2 = 1524
+unsigned short Tag_230AR02R_S3 = 1526
+unsigned short Tag_230AR02R_U1 = 1532
+unsigned short Tag_230AR02R_U2 = 1534
+unsigned short Tag_230AR02R_U3 = 1536
+unsigned short Tag_230AR02R_I1 = 1542
+unsigned short Tag_230AR02R_I2 = 1544
+unsigned short Tag_230AR02R_I3 = 1546
+unsigned short Tag_230AR02R_COSFi0 = 1550
+unsigned short Tag_230AR02R_COSFi1 = 1552
+unsigned short Tag_230AR02R_COSFi2 = 1554
+unsigned short Tag_230AR02R_COSFi3 = 1556
+unsigned short Tag_230AR02R_F = 1560
+unsigned short Tag_230AR02R_Fi12 = 1572
+unsigned short Tag_230AR02R_Fi31 = 1574
+unsigned short Tag_230AR02R_Fi23 = 1576
+unsigned short Tag_230AR02R_U12 = 1582
+unsigned short Tag_230AR02R_U23 = 1584
+unsigned short Tag_230AR02R_U31 = 1586
+unsigned short Tag_230AR02R_Eap = 1590
+unsigned short Tag_230AR02R_Ean = 1592
+unsigned short Tag_230AR02R_Erp = 1594
+unsigned short Tag_230AR02R_Ern = 1596
+unsigned short Tag_230AR02R_Tin = 1568
+unsigned short Tag_230AR02R_SN = 1508
+unsigned short Tag_230AR02R_SW = 1518
+unsigned short Tag_230AR02R_ADR = 1528
+unsigned short Tag_230AR02R_FLG = 1588
+unsigned short Tag_230AR02R_ERR = 1598
+//
+char request[16]
+char response[32]
+char addr = 1
+char req_num = 0, type_param = 0, ext_param = 0, read_count = 0, i = 0
+char chksum_lb = 0, chksum_hb = 0
+short chksum = 0, return_value = 0, response_chksum = 0
+short result[2]
+
+
+//===
+sub short get_param14(char req_num_, char type_param_, char ext_param_, char read_count_)
+char chksum_lb_ = 0, chksum_hb_ = 0
+short chksum_ = 0, response_chksum_ = 0, return_value_ = 0
+short result_[2]
+
+FILL(request[0], 0, 16)
+FILL(response[0], 0, 32)
+FILL(result_[0], 0, 2)
+
+return_value_ = 0
+request[0] = addr
+request[1] = req_num_
+request[2] = type_param_
+request[3] = ext_param_
+
+CRC(request[0], chksum_, 4)
+LOBYTE(chksum_, request[4])
+HIBYTE(chksum_, request[5])
+
+OUTPORT(request[0], "FREE-PROTOCOL", 6)
+
+INPORT(response[0], "FREE-PROTOCOL", read_count_, return_value_)
+
+CRC(response[0], chksum_, read_count_-2)
+
+if type_param_ == 0x11 then
+response_chksum_ = response[4] + (response[5]<<8)
+end if 
+
+if type_param_ == 0x00 and ext_param_ == 0x00 then
+response_chksum_ = response[17] + (response[18]<<8)
+end if
+LOBYTE(chksum_, chksum_lb_)
+HIBYTE(chksum_, chksum_hb_)
+
+SetDataEx(return_value_, "LocalHMI", LW, 3, 1)
+SetDataEx(ext_param_, "LocalHMI", LW, 110, 1)
+SetDataEx(response[1], "LocalHMI", LW, 112, 1)
+SetDataEx(response[2], "LocalHMI", LW, 114, 1)
+
+if type_param_ == 0x11 then
+SetDataEx(response[3], "LocalHMI", LW, 116, 1)
+SetDataEx(response[4], "LocalHMI", LW, 118, 1)
+end if
+
+if type_param_ == 0x00 and ext_param_ == 0x00 then
+SetDataEx(response[17], "LocalHMI", LW, 116, 1)
+SetDataEx(response[18], "LocalHMI", LW, 118, 1)
+end if
+
+if return_value_ > 0 and chksum_ == response_chksum_ then
+
+
+if type_param_ == 0x00 and ext_param_ == 0x00 then
+
+result_[0] = response[3] + (response[4]<<8)
+result_[1] = response[1] + (response[2]<<8)
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_Eap, 2)
+
+result_[0] = response[7] + (response[8]<<8)
+result_[1] = response[5] + (response[6]<<8)
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_Ean, 2)
+
+result_[0] = response[11] + (response[12]<<8)
+result_[1] = response[9] + (response[10]<<8)
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_Erp, 2)
+
+result_[0] = response[15] + (response[16]<<8)
+result_[1] = response[13] + (response[14]<<8)
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_Ern, 2)
+
+end if
+
+
+if type_param_ == 0x11 then
+
+response[1] = response[1] & 0x3f
+result_[0] = response[2] + (response[3]<<8)
+result_[1] = response[1]
+if ext_param_ == 0x00 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P0, 2)
+end if
+
+if ext_param_ == 0x01 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P1, 2)
+end if
+
+if ext_param_ == 0x02 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P2, 2)
+end if
+
+if ext_param_ == 0x03 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P3, 2)
+end if
+
+end if
+
+
+// not works
+//if type_param_ == 0x14 and ext_param_ == 0x01 then
+
+//response[1] = response[1] & 0x3f
+//result_[0] = response[3] + (response[4]<<8)
+//result_[1] = response[1]
+//SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P0, 2)
+
+//response[5] = response[5] & 0x3f
+//result_[0] = response[7] + (response[8]<<8)
+//result_[1] = response[5]
+//SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P1, 2)
+
+//response[9] = response[9] & 0x3f
+//result_[0] = response[11] + (response[12]<<8)
+//result_[1] = response[9]
+//SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P2, 2)
+
+//response[13] = response[13] & 0x3f
+//result_[0] = response[15] + (response[16]<<8)
+//result_[1] = response[13]
+//SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P3, 2)
+
+//end if
+
+
+//SetDataEx(ext_param_, "LocalHMI", LW, 110, 1)
+//SetDataEx(response[1], "LocalHMI", LW, 112, 1)
+//SetDataEx(response[2], "LocalHMI", LW, 114, 1)
+//SetDataEx(response[3], "LocalHMI", LW, 116, 1)
+//SetDataEx(response[4], "LocalHMI", LW, 118, 1)
+
+end if
+
+return return_value_
+
+end sub
+
+//===
+sub short get_param34(char req_num_, char type_param_, char ext_param_, char read_count_)
+char chksum_lb_ = 0, chksum_hb_ = 0
+short chksum_ = 0, response_chksum_ = 0, return_value_ = 0
+short result_[2]
+
+FILL(request[0], 0, 16)
+FILL(response[0], 0, 32)
+FILL(result_[0], 0, 2)
+
+return_value_ = 0
+request[0] = addr
+request[1] = req_num_
+request[2] = type_param_
+request[3] = ext_param_
+
+CRC(request[0], chksum_, 4)
+LOBYTE(chksum_, request[4])
+HIBYTE(chksum_, request[5])
+
+OUTPORT(request[0], "FREE-PROTOCOL", 6)
+
+INPORT(response[0], "FREE-PROTOCOL", read_count_, return_value_)
+
+CRC(response[0], chksum_, read_count_-2)
+response_chksum_ = response[10] + (response[11]<<8)
+if read_count_ == 15 then
+response_chksum_ = response[13] + (response[14]<<8)
+end if
+LOBYTE(chksum_, chksum_lb_)
+HIBYTE(chksum_, chksum_hb_)
+
+
+if return_value_ > 0 then
+//and chksum_ == response_chksum_ then
+SetDataEx(return_value_, "LocalHMI", LW, 3, 1)
+
+
+SetDataEx(ext_param_, "LocalHMI", LW, 110, 1)
+SetDataEx(chksum_lb_, "LocalHMI", LW, 112, 1)
+SetDataEx(chksum_hb_, "LocalHMI", LW, 114, 1)
+SetDataEx(response[10], "LocalHMI", LW, 116, 1)
+SetDataEx(response[11], "LocalHMI", LW, 118, 1)
+if read_count_ == 15 then
+SetDataEx(response[13], "LocalHMI", LW, 116, 1)
+SetDataEx(response[14], "LocalHMI", LW, 118, 1)
+end if
+
+
+if ext_param_ == 0x01 or ext_param_ == 0x02 or ext_param_ == 0x05 or ext_param_ == 0x09 then
+response[1] = response[1] & 0x3f
+response[4] = response[4] & 0x3f
+response[7] = response[7] & 0x3f
+if return_value_ == 15 then
+response[10] = response[10] & 0x3f
+end if
+end if
+
+result_[0] = response[2] + (response[3]<<8)
+result_[1] = response[1] 
+
+if ext_param_ == 0x01 or ext_param_ == 0x02 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P0, 2)
+else if ext_param_ == 0x05 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_Q0, 2)
+else if ext_param_ == 0x09 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_S0, 2)
+else if ext_param_ == 0x11 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_U1, 2)
+else if ext_param_ == 0x21 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_I1, 2)
+end if
+
+result_[0] = response[5] + (response[6]<<8)
+result_[1] = response[4] 
+
+if ext_param_ == 0x01 or ext_param_ == 0x02 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P1, 2)
+else if ext_param_ == 0x05 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_Q1, 2)
+else if ext_param_ == 0x09 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_S1, 2)
+else if ext_param_ == 0x11 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_U2, 2)
+else if ext_param_ == 0x21 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_I2, 2)
+end if
+
+result_[0] = response[8] + (response[9]<<8)
+result_[1] = response[7] 
+
+if ext_param_ == 0x01 or ext_param_ == 0x02 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P2, 2)
+else if ext_param_ == 0x05 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_Q2, 2)
+else if ext_param_ == 0x09 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_S2, 2)
+else if ext_param_ == 0x11 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_U3, 2)
+else if ext_param_ == 0x21 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_I3, 2)
+end if
+
+// not works
+if return_value_ == 15 then
+
+result_[0] = response[11] + (response[12]<<8)
+result_[1] = response[10] 
+
+if ext_param_ == 0x01 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_P3, 2)
+else if ext_param_ == 0x05 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_Q3, 2)
+else if ext_param_ == 0x09 then
+SetDataEx(result_[0], "LocalHMI", LW, Tag_230AR02R_S3, 2)
+end if
+
+end if
+
+//SetDataEx(ext_param_, "LocalHMI", LW, 110, 1)
+//SetDataEx(response[1], "LocalHMI", LW, 112, 1)
+//SetDataEx(response[2], "LocalHMI", LW, 114, 1)
+//SetDataEx(response[3], "LocalHMI", LW, 116, 1)
+//SetDataEx(response[4], "LocalHMI", LW, 118, 1)
+
+end if
+
+return return_value_
+
+end sub
+
+//===
+
+
+macro_command main()
+
+//---
+FILL(request[0], 0, 16)
+FILL(response[0], 0, 32)
+
+read_count = 4 
+req_num = 0x01
+type_param = 0x01
+request[0] = addr
+request[1] = req_num
+request[2] = type_param
+
+for i=3 to 8
+request[i] = 1
+next i
+
+CRC(request[0], chksum, 9)
+LOBYTE(chksum, request[9])
+HIBYTE(chksum, request[10])
+
+OUTPORT(request[0], "FREE-PROTOCOL", 11)
+
+INPORT(response[0], "FREE-PROTOCOL", read_count, return_value)
+SetDataEx(response[0], "LocalHMI", LW, 1, 1)
+
+if return_value > 0 then
+SetDataEx(response[0], "LocalHMI", LW, 1, 1)
+
+//get_param14(0x05, 0x00, 0x00, 19)
+//?
+get_param14(0x08, 0x11, 0x01, 6)
+
+//not works
+//get_param14(0x08, 0x14, 0x00, 19)
+// not works fully - return 12 bytes only, NO P2, NO P3
+//get_param34(0x08, 0x16, 0x01, 12)
+//get_param34(0x08, 0x16, 0x05, 12)
+//get_param34(0x08, 0x16, 0x09, 12)
+//65 162  0 126 = 654.50 : ((1 << 8) + 126) / 100 = 3.82 // P2? P0 = 13
+//64 137 0 102 = 654.15 : (0 << 8) + 102 / 100 = 1.02 // P3? P2 = 1.5
+//64 182 0 118 = 654.68 : (0 << 8) + 118 / 118 = 1.18 // P1? P3 = 1.5
+// P0 = 13
+
+//get_param34(0x08, 0x16, 0x11, 12)
+//get_param34(0x08, 0x16, 0x21, 12)
+
+
+
+end if
+
+end macro_command
